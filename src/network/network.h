@@ -144,6 +144,7 @@ public:
 	bool CheckSRAND(uint32 tick, uint32 srand0);
 
 	void Client_Send_AUTH(const char* gameversion, const char* name, const char* password);
+	void Client_Send_MREQUEST();
 	void Server_Send_MAP(NetworkConnection* connection = nullptr);
 	void Client_Send_CHAT(const char* text);
 	void Server_Send_CHAT(const char* text);
@@ -202,6 +203,7 @@ private:
 	std::vector<int (Network::*)(NetworkConnection& connection, NetworkPacket& packet)> server_command_handlers;
 	int Client_Handle_AUTH(NetworkConnection& connection, NetworkPacket& packet);
 	int Server_Handle_AUTH(NetworkConnection& connection, NetworkPacket& packet);
+	int Server_Handle_MREQUEST(NetworkConnection& connection, NetworkPacket& packet);
 	int Client_Handle_MAP(NetworkConnection& connection, NetworkPacket& packet);
 	int Client_Handle_CHAT(NetworkConnection& connection, NetworkPacket& packet);
 	int Server_Handle_CHAT(NetworkConnection& connection, NetworkPacket& packet);

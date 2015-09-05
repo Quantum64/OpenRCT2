@@ -55,6 +55,7 @@ enum {
 enum {
 	NETWORK_COMMAND_AUTH,
 	NETWORK_COMMAND_MAP,
+	NETWORK_COMMAND_MREQUEST,
 	NETWORK_COMMAND_CHAT,
 	NETWORK_COMMAND_GAMECMD,
 	NETWORK_COMMAND_TICK,
@@ -251,6 +252,7 @@ Network::Network()
 	client_command_handlers[NETWORK_COMMAND_PINGLIST] = &Network::Client_Handle_PINGLIST;
 	server_command_handlers.resize(NETWORK_COMMAND_MAX, 0);
 	server_command_handlers[NETWORK_COMMAND_AUTH] = &Network::Server_Handle_AUTH;
+	server_command_handlers[NETWORK_COMMAND_MREQUEST] = &Network::Server_Handle_MREQUEST;
 	server_command_handlers[NETWORK_COMMAND_CHAT] = &Network::Server_Handle_CHAT;
 	server_command_handlers[NETWORK_COMMAND_GAMECMD] = &Network::Server_Handle_GAMECMD;
 	server_command_handlers[NETWORK_COMMAND_PING] = &Network::Server_Handle_PING;
@@ -466,8 +468,12 @@ void Network::UpdateClient()
 	}
 	ProcessGameCommandQueue();
 	if (!CheckSRAND(RCT2_GLOBAL(RCT2_ADDRESS_CURRENT_TICKS, uint32), RCT2_GLOBAL(RCT2_ADDRESS_SCENARIO_SRAND_0, uint32))) {
-		window_network_status_open("Network desync detected");
-		Close();
+		char text[256];
+		char* lineCh = text;
+		lineCh = utf8_write_codepoint(lineCh, FORMAT_OUTLINE);
+		lineCh = utf8_write_codepoint(lineCh, FORMAT_GREEN);
+		sprintf(lineCh, "A network desync was detected, the map is now going to be resent resent");
+		Client_Send_MREQUEST();
 	}
 }
 
@@ -528,6 +534,14 @@ void Network::Client_Send_AUTH(const char* gameversion, const char* name, const 
 	packet->WriteString(name);
 	packet->WriteString(password);
 	server_connection.authstatus = NETWORK_AUTH_REQUESTED;
+	server_connection.QueuePacket(std::move(packet));
+}
+
+void Network::Client_Send_MREQUEST()
+{
+	std::unique_ptr<NetworkPacket> packet = std::move(NetworkPacket::Allocate());
+	*packet << (uint32)NETWORK_COMMAND_AUTH;
+	packet->WriteString("maprequest");
 	server_connection.QueuePacket(std::move(packet));
 }
 
@@ -799,6 +813,12 @@ int Network::Server_Handle_AUTH(NetworkConnection& connection, NetworkPacket& pa
 		*responsepacket << (uint32)NETWORK_COMMAND_AUTH << (uint32)connection.authstatus << (uint8)playerid;
 		connection.QueuePacket(std::move(responsepacket));
 	}
+	return 1;
+}
+
+int Network::Server_Handle_MREQUEST(NetworkConnection& connection, NetworkPacket& packet) 
+{
+	Server_Send_MAP(&connection);
 	return 1;
 }
 
